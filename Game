@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>City Defender - Enhanced</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <style>
+        /* STARFIELD STYLES */
+        #starfield {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* GAME ELEMENT STYLES */
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            overflow: hidden;
+            background: #000;
+            margin: auto;
+        }
+
+        /* CITY STYLES */
+        #city {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding: 0 20px;
+            z-index: 1;
+        }
+
+        .building {
+            width: 60px;
+            background: #555;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            padding: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .building:nth-child(odd) {
+            height: 70px;
+            background: #666;
+        }
+
+        .building:nth-child(even) {
+            height: 90px;
+            background: #444;
+        }
+
+        .window {
+            width: 10px;
+            height: 10px;
+            background: yellow;
+            margin: 2px;
+            display: inline-block;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .building.destroyed {
+            background: transparent !important;
+            box-shadow: none;
+            transform: scale(0);
+        }
+
+        .building.destroyed .window {
+            opacity: 0;
+        }
+
+        /* PLAYER STYLES */
+        #player {
+            position: absolute;
+            width: 50px;
+            height: 35px;
+            top: 540px;
+            left: 375px;
+            z-index: 2;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 35'%3E%3Cpath d='M25 0 L40 20 L35 25 L25 20 L15 25 L10 20 Z' fill='%2300ff00'/%3E%3Crect x='20' y='5' width='10' height='10' fill='%2300cc00'/%3E%3Cpath d='M22 15 L28 15 L25 20 Z' fill='%23009900'/%3E%3C/svg%3E") no-repeat center/contain;
+        }
+
+        /* ENEMY STYLES */
+        .enemy {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            z-index: 2;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23ff0000'/%3E%3Ccircle cx='20' cy='20' r='15' fill='%23cc0000'/%3E%3Ccircle cx='20' cy='20' r='10' fill='%23990000'/%3E%3C/svg%3E") no-repeat center/contain;
+            animation: float 2s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* MINI-BOSS STYLES */
+        .miniBoss {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            z-index: 2;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23ff4500'/%3E%3Ccircle cx='40' cy='40' r='30' fill='%23ff6347'/%3E%3Ccircle cx='40' cy='40' r='20' fill='%23ff7f50'/%3E%3C/svg%3E") no-repeat center/contain;
+            animation: pulse 1s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* BULLET STYLES */
+        .bullet {
+            position: absolute;
+            width: 3px;
+            height: 15px;
+            background: #00ff00;
+            z-index: 1;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        /* EXPLOSION STYLES */
+        .explosion {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23ff9900'/%3E%3Ccircle cx='20' cy='20' r='15' fill='%23ff6600'/%3E%3Ccircle cx='20' cy='20' r='10' fill='%23ff3300'/%3E%3C/svg%3E") no-repeat center/contain;
+            animation: explode 0.5s ease-out;
+            z-index: 3;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* SCORE STYLES */
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            letter-spacing: 2px;
+            z-index: 3;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        #highScore {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            letter-spacing: 2px;
+            z-index: 3;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        /* GAME OVER STYLES */
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4em;
+            text-shadow: 0 0 10px #00ff00;
+            text-align: center;
+            z-index: 4;
+        }
+
+        #restartText {
+            font-size: 0.5em;
+            margin-top: 20px;
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        /* PAUSE MENU STYLES */
+        #pauseScreen {
+            display: none;
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2em;
+            text-shadow: 0 0 10px #00ff00;
+            z-index: 5;
+            text-align: center;
+        }
+
+        #pauseMenu {
+            display: none;
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+            text-align: center;
+        }
+
+        .pauseOption {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+            cursor: pointer;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+        }
+
+        .pauseOption:hover {
+            color: #00cc00;
+            transform: scale(1.1);
+        }
+
+        /* START BUTTON STYLES */
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            font-family: 'Orbitron', sans-serif;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            z-index: 5;
+            box-shadow: 0 0 15px #00ff00;
+        }
+
+        /* ENHANCED STYLES */
+        .miniBossHealth {
+            position: absolute;
+            width: 80px;
+            height: 5px;
+            background: #444;
+            bottom: -10px;
+            left: 0;
+        }
+
+        .miniBossHealthBar {
+            height: 100%;
+            background: #00ff00;
+            transition: width 0.3s ease;
+        }
+
+        .building-health {
+            position: absolute;
+            top: -20px;
+            width: 100%;
+            height: 3px;
+            background: #444;
+        }
+
+        .building-health-bar {
+            height: 100%;
+            background: #00ff00;
+            transition: width 0.3s ease;
+        }
+
+        /* POWER-UP STYLES */
+        .powerUp {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            animation: float 2s infinite ease-in-out;
+            z-index: 2;
+        }
+
+        .powerUp.tripleShot {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M15 0 L30 15 L15 30 L0 15 Z' fill='%2300ffff'/%3E%3C/svg%3E") no-repeat center/contain;
+        }
+
+        .powerUp.speedBoost {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Ccircle cx='15' cy='15' r='15' fill='%23ff00ff'/%3E%3C/svg%3E") no-repeat center/contain;
+        }
+
+        .powerUp.freeMove {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M15 0 L30 15 L15 30 L0 15 Z' fill='%2300ff00'/%3E%3C/svg%3E") no-repeat center/contain;
+        }
+
+        .powerUp.autoFire {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M15 0 L30 15 L15 30 L0 15 Z' fill='%23ff9900'/%3E%3C/svg%3E") no-repeat center/contain;
+        }
+
+        #powerUpTimer {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            letter-spacing: 2px;
+            z-index: 3;
+            text-shadow: 0 0 10px #00ff00;
+            display: none;
+        }
+
+        /* POWER-UP NOTIFICATION STYLES */
+        #powerUpNotification {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px #00ff00;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            z-index: 4;
+        }
+
+        .show-notification {
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="starfield"></div>
+        <div id="city">
+            <div class="building">
+                <div class="building-health"><div class="building-health-bar"></div></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+            </div>
+            <div class="building">
+                <div class="building-health"><div class="building-health-bar"></div></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+            </div>
+            <div class="building">
+                <div class="building-health"><div class="building-health-bar"></div></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+            </div>
+            <div class="building">
+                <div class="building-health"><div class="building-health-bar"></div></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+            </div>
+            <div class="building">
+                <div class="building-health"><div class="building-health-bar"></div></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+                <div class="window"></div><div class="window"></div><div class="window"></div>
+            </div>
+        </div>
+        <div id="score">SCORE: 0</div>
+        <div id="highScore">HIGH SCORE: 0</div>
+        <div id="gameOver">
+            GAME OVER
+            <div id="restartText">PRESS SPACE TO RESTART</div>
+        </div>
+        <div id="pauseScreen">GAME PAUSED</div>
+        <div id="pauseMenu">
+            <div class="pauseOption" id="resumeOption">RESUME</div>
+            <div class="pauseOption" id="restartOption">RESTART</div>
+            <div class="pauseOption" id="quitOption">QUIT</div>
+        </div>
+        <div id="player"></div>
+        <button id="startButton">START GAME</button>
+        <div id="powerUpTimer"></div>
+        <div id="powerUpNotification"></div>
+    </div>
+
+    <script>
+        // Game initialization
+        const player = document.getElementById('player');
+        const gameContainer = document.getElementById('gameContainer');
+        const starfield = document.getElementById('starfield');
+        const city = document.getElementById('city');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const gameOverScreen = document.getElementById('gameOver');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const pauseMenu = document.getElementById('pauseMenu');
+        const resumeOption = document.getElementById('resumeOption');
+        const restartOption = document.getElementById('restartOption');
+        const quitOption = document.getElementById('quitOption');
+        const startButton = document.getElementById('startButton');
+        const buildings = Array.from(document.querySelectorAll('.building'));
+        const powerUpNotification = document.getElementById('powerUpNotification');
+        
+        let playerX = 375;
+        let playerY = 540;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('highScore')) || 0;
+        let bullets = [];
+        let enemies = [];
+        let miniBosses = [];
+        let powerUps = [];
+        let activePowerUp = null;
+        let gameActive = true;
+        let gamePaused = false;
+        let enemyInterval;
+        let miniBossInterval;
+        let powerUpInterval;
+        let animationFrame;
+        let canShoot = true;
+        let autoFireInterval;
+        let isSpaceHeld = false;
+
+        const powerUpTypes = {
+            tripleShot: { name: 'TRIPLE SHOT', color: '#00ffff' },
+            speedBoost: { name: 'SPEED BOOST', color: '#ff00ff' },
+            freeMove: { name: 'FREE MOVE', color: '#00ff00' },
+            autoFire: { name: 'AUTO FIRE', color: '#ff9900' }
+        };
+
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,
+            ArrowDown: false
+        };
+
+        // Sound effects
+        const shootSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+
+        function startGame() {
+            startButton.style.display = 'none';
+            generateStars();
+            enemyInterval = setInterval(createEnemy, 1000);
+            miniBossInterval = setInterval(createMiniBoss, 10000);
+            powerUpInterval = setInterval(createPowerUp, 12000); // Increased spawn rate
+            gameLoop();
+            highScoreElement.textContent = `HIGH SCORE: ${highScore}`;
+            
+            buildings.forEach(building => {
+                building.health = 3;
+                building.querySelector('.building-health-bar').style.width = '100%';
+            });
+        }
+
+        startButton.addEventListener('click', startGame);
+
+        function generateStars() {
+            starfield.innerHTML = '';
+            for(let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 800 + 'px';
+                star.style.top = Math.random() * 600 + 'px';
+                star.style.setProperty('--duration', `${Math.random() * 3 + 1}s`);
+                starfield.appendChild(star);
+            }
+        }
+
+        function createEnemy() {
+            const enemy = document.createElement('div');
+            enemy.className = 'enemy';
+            const targetBuilding = buildings[Math.floor(Math.random() * buildings.length)];
+            const targetX = targetBuilding.offsetLeft + (targetBuilding.offsetWidth / 2) - 20;
+            
+            enemy.style.left = targetX + 'px';
+            enemy.style.top = '-40px';
+            gameContainer.appendChild(enemy);
+            
+            enemies.push({
+                element: enemy,
+                y: -40,
+                targetX: targetX,
+                speed: 1 + Math.random() * 1
+            });
+        }
+
+        function createMiniBoss() {
+            if (!gameActive || gamePaused) return;
+
+            const miniBoss = document.createElement('div');
+            miniBoss.className = 'miniBoss';
+            miniBoss.style.left = Math.random() * 760 + 'px';
+            miniBoss.style.top = '-80px';
+            
+            const healthBar = document.createElement('div');
+            healthBar.className = 'miniBossHealth';
+            const healthBarInner = document.createElement('div');
+            healthBarInner.className = 'miniBossHealthBar';
+            healthBarInner.style.width = '100%';
+            healthBar.appendChild(healthBarInner);
+            miniBoss.appendChild(healthBar);
+
+            gameContainer.appendChild(miniBoss);
+
+            miniBosses.push({
+                element: miniBoss,
+                x: parseFloat(miniBoss.style.left),
+                y: -80,
+                speed: 1.5,
+                health: 5,
+                maxHealth: 5,
+                healthBar: healthBarInner
+            });
+        }
+
+        function createPowerUp() {
+            if (!gameActive || gamePaused || activePowerUp) return;
+
+            const types = Object.keys(powerUpTypes);
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            const powerUp = document.createElement('div');
+            powerUp.className = `powerUp ${type}`;
+            powerUp.style.left = Math.random() * 770 + 'px';
+            powerUp.style.top = '-30px';
+            gameContainer.appendChild(powerUp);
+
+            powerUps.push({
+                element: powerUp,
+                y: -30,
+                type: type,
+                speed: 2
+            });
+        }
+
+        function activatePowerUp(type) {
+            if (activePowerUp) {
+                clearTimeout(powerUpTimerId);
+                deactivatePowerUp();
+            }
+
+            activePowerUp = type;
+            document.getElementById('powerUpTimer').style.display = 'block';
+            
+            // Show power-up notification
+            powerUpNotification.textContent = powerUpTypes[type].name;
+            powerUpNotification.style.color = powerUpTypes[type].color;
+            powerUpNotification.classList.add('show-notification');
+            setTimeout(() => powerUpNotification.classList.remove('show-notification'), 2000);
+
+            let duration = 10000;
+
+            switch(type) {
+                case 'tripleShot':
+                    canShoot = true;
+                    duration = 15000;
+                    player.style.filter = 'hue-rotate(180deg)';
+                    break;
+                case 'speedBoost':
+                    duration = 10000;
+                    player.style.filter = 'hue-rotate(300deg)';
+                    break;
+                case 'freeMove':
+                    duration = 8000;
+                    player.style.filter = 'hue-rotate(90deg)';
+                    break;
+                case 'autoFire':
+                    duration = 12000;
+                    player.style.filter = 'hue-rotate(60deg)';
+                    startAutoFire();
+                    break;
+            }
+
+            powerUpTimerId = setTimeout(deactivatePowerUp, duration);
+            updatePowerUpTimer(duration);
+        }
+
+        function deactivatePowerUp() {
+            activePowerUp = null;
+            player.style.filter = 'none';
+            document.getElementById('powerUpTimer').style.display = 'none';
+            
+            // Reset to default values
+            canShoot = true;
+            stopAutoFire();
+        }
+
+        function startAutoFire() {
+            autoFireInterval = setInterval(() => {
+                if (isSpaceHeld) shoot();
+            }, 150); // Faster shooting
+        }
+
+        function stopAutoFire() {
+            clearInterval(autoFireInterval);
+        }
+
+        function updatePowerUpTimer(duration) {
+            const timerElement = document.getElementById('powerUpTimer');
+            const start = Date.now();
+            
+            function update() {
+                if (!activePowerUp) return;
+                const elapsed = Date.now() - start;
+                const remaining = (duration - elapsed) / 1000;
+                
+                if (remaining <= 0) {
+                    timerElement.textContent = '';
+                    return;
+                }
+                
+                timerElement.textContent = `POWER: ${remaining.toFixed(1)}s`;
+                requestAnimationFrame(update);
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        function shoot() {
+            if (!canShoot) return;
+            canShoot = false;
+            
+            let fireRate = 200;
+            if (activePowerUp === 'tripleShot') {
+                fireRate = 100;
+                createBullet(-5);
+                createBullet(0);
+                createBullet(5);
+            } else {
+                createBullet(0);
+            }
+            
+            if (activePowerUp !== 'autoFire') {
+                setTimeout(() => canShoot = true, fireRate);
+            } else {
+                canShoot = true; // Reset immediately for auto-fire
+            }
+            shootSound.play();
+        }
+
+        function createBullet(offset) {
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet';
+            bullet.style.left = (playerX + 25 + offset) + 'px';
+            bullet.style.bottom = (600 - playerY) + 'px';
+            if (activePowerUp === 'autoFire') {
+                bullet.style.background = '#ff9900';
+                bullet.style.boxShadow = '0 0 10px #ff9900';
+            }
+            gameContainer.appendChild(bullet);
+            bullets.push(bullet);
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = x + 'px';
+            explosion.style.top = y + 'px';
+            gameContainer.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function checkCollision(obj1, obj2, radius1, radius2) {
+            const rect1 = obj1.getBoundingClientRect();
+            const rect2 = obj2.getBoundingClientRect();
+            const dx = (rect1.left + rect1.right)/2 - (rect2.left + rect2.right)/2;
+            const dy = (rect1.top + rect1.bottom)/2 - (rect2.top + rect2.bottom)/2;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (radius1 + radius2);
+        }
+
+        function damageBuilding(building) {
+            building.health--;
+            const healthBar = building.querySelector('.building-health-bar');
+            healthBar.style.width = `${(building.health/3)*100}%`;
+            
+            if (building.health <= 0) {
+                building.classList.add('destroyed');
+                createExplosion(
+                    building.offsetLeft + building.offsetWidth/2 - 20,
+                    building.offsetTop + building.offsetHeight/2
+                );
+                
+                if (buildings.every(b => b.health <= 0)) {
+                    gameOver();
+                }
+            }
+        }
+
+        function gameLoop() {
+            if(!gameActive || gamePaused) {
+                animationFrame = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Update player position (horizontal only)
+            if(keys.ArrowLeft && playerX > 0) {
+                playerX -= activePowerUp === 'speedBoost' ? 12 : 8;
+            }
+            if(keys.ArrowRight && playerX < 750) {
+                playerX += activePowerUp === 'speedBoost' ? 12 : 8;
+            }
+            player.style.left = playerX + 'px';
+
+            // Update bullets - increase speed during auto-fire
+            bullets.forEach((bullet, index) => {
+                const bottom = parseFloat(bullet.style.bottom) || 70;
+                bullet.style.bottom = (bottom + (activePowerUp === 'autoFire' ? 20 : 10)) + 'px';
+                if(bottom > 600) {
+                    bullet.remove();
+                    bullets.splice(index, 1);
+                }
+            });
+
+            // Update enemies and check collisions
+            enemies.forEach((enemy, index) => {
+                const dx = enemy.targetX - parseFloat(enemy.element.style.left);
+                enemy.element.style.left = (parseFloat(enemy.element.style.left) + dx * 0.02) + 'px';
+                
+                enemy.y += enemy.speed;
+                enemy.element.style.top = enemy.y + 'px';
+
+                // Check for building collision
+                if(enemy.y > 500) {
+                    const buildingIndex = buildings.findIndex(b => 
+                        Math.abs(b.offsetLeft + b.offsetWidth/2 - parseFloat(enemy.element.style.left)) < 40
+                    );
+                    
+                    if(buildingIndex > -1 && buildings[buildingIndex].health > 0) {
+                        damageBuilding(buildings[buildingIndex]);
+                    }
+                    
+                    enemy.element.remove();
+                    enemies.splice(index, 1);
+                }
+
+                // Check for bullet collision
+                bullets.forEach((bullet, bulletIndex) => {
+                    if (checkCollision(bullet, enemy.element, 5, 20)) {
+                        createExplosion(
+                            enemy.element.offsetLeft,
+                            enemy.element.offsetTop
+                        );
+                        enemy.element.remove();
+                        bullets[bulletIndex].remove();
+                        enemies.splice(index, 1);
+                        bullets.splice(bulletIndex, 1);
+                        score += 10;
+                        scoreElement.textContent = `SCORE: ${score}`;
+                        
+                        if(score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('highScore', highScore.toString());
+                            highScoreElement.textContent = `HIGH SCORE: ${highScore}`;
+                        }
+                    }
+                });
+            });
+
+            // Update mini-bosses and check collisions
+            miniBosses.forEach((miniBoss, index) => {
+                const dx = playerX - miniBoss.x;
+                const dy = playerY - miniBoss.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const speed = miniBoss.speed;
+
+                miniBoss.x += (dx / distance) * speed;
+                miniBoss.y += (dy / distance) * speed;
+
+                miniBoss.element.style.left = miniBoss.x + 'px';
+                miniBoss.element.style.top = miniBoss.y + 'px';
+
+                // Check for player collision
+                if (checkCollision(player, miniBoss.element, 25, 40)) {
+                    gameOver();
+                }
+
+                // Check for bullet collision
+                bullets.forEach((bullet, bulletIndex) => {
+                    if (checkCollision(bullet, miniBoss.element, 5, 40)) {
+                        miniBoss.health -= 1;
+                        bullets[bulletIndex].remove();
+                        bullets.splice(bulletIndex, 1);
+
+                        if (miniBoss.health <= 0) {
+                            createExplosion(
+                                miniBoss.element.offsetLeft,
+                                miniBoss.element.offsetTop
+                            );
+                            miniBoss.element.remove();
+                            miniBosses.splice(index, 1);
+                            score += 50;
+                            scoreElement.textContent = `SCORE: ${score}`;
+
+                            if (score > highScore) {
+                                highScore = score;
+                                localStorage.setItem('highScore', highScore.toString());
+                                highScoreElement.textContent = `HIGH SCORE: ${highScore}`;
+                            }
+                        } else {
+                            miniBoss.healthBar.style.width = `${(miniBoss.health/miniBoss.maxHealth)*100}%`;
+                            miniBoss.element.style.filter = `hue-rotate(${120 * (1 - miniBoss.health/miniBoss.maxHealth)}deg)`;
+                        }
+                    }
+                });
+            });
+
+            // Update power-ups and check collisions
+            powerUps.forEach((powerUp, index) => {
+                powerUp.y += powerUp.speed;
+                powerUp.element.style.top = powerUp.y + 'px';
+
+                if (powerUp.y > 600) {
+                    powerUp.element.remove();
+                    powerUps.splice(index, 1);
+                }
+
+                // Check collision with player
+                if (checkCollision(player, powerUp.element, 25, 15)) {
+                    activatePowerUp(powerUp.type);
+                    powerUp.element.remove();
+                    powerUps.splice(index, 1);
+                }
+            });
+
+            // Update player position for free move
+            if (activePowerUp === 'freeMove') {
+                if(keys.ArrowUp && playerY > 400) playerY -= 8;
+                if(keys.ArrowDown && playerY < 540) playerY += 8;
+                player.style.top = playerY + 'px';
+            }
+
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            clearInterval(enemyInterval);
+            clearInterval(miniBossInterval);
+            clearInterval(powerUpInterval);
+            cancelAnimationFrame(animationFrame);
+            gameOverScreen.style.display = 'block';
+            document.addEventListener('keydown', restartGame);
+        }
+
+        function restartGame(e) {
+            if(e.key === ' ') {
+                clearInterval(enemyInterval);
+                clearInterval(miniBossInterval);
+                clearInterval(powerUpInterval);
+                cancelAnimationFrame(animationFrame);
+                bullets.forEach(b => b.remove());
+                enemies.forEach(e => e.element.remove());
+                miniBosses.forEach(m => m.element.remove());
+                powerUps.forEach(p => p.element.remove());
+                
+                gameActive = true;
+                score = 0;
+                bullets = [];
+                enemies = [];
+                miniBosses = [];
+                powerUps = [];
+                playerX = 375;
+                playerY = 540;
+                player.style.left = playerX + 'px';
+                player.style.top = playerY + 'px';
+                scoreElement.textContent = `SCORE: ${score}`;
+                highScore = parseInt(localStorage.getItem('highScore')) || 0;
+                highScoreElement.textContent = `HIGH SCORE: ${highScore}`;
+                gameOverScreen.style.display = 'none';
+                document.removeEventListener('keydown', restartGame);
+                
+                // Reset buildings
+                buildings.forEach(b => {
+                    b.health = 3;
+                    b.classList.remove('destroyed');
+                    b.querySelector('.building-health-bar').style.width = '100%';
+                });
+                
+                generateStars();
+                enemyInterval = setInterval(createEnemy, 1000);
+                miniBossInterval = setInterval(createMiniBoss, 10000);
+                powerUpInterval = setInterval(createPowerUp, 12000);
+                gameLoop();
+            }
+        }
+
+        function togglePause() {
+            gamePaused = !gamePaused;
+            pauseScreen.style.display = gamePaused ? 'block' : 'none';
+            pauseMenu.style.display = gamePaused ? 'block' : 'none';
+        }
+
+        // Event listeners
+        resumeOption.addEventListener('click', togglePause);
+        restartOption.addEventListener('click', () => {
+            togglePause();
+            restartGame({ key: ' ' });
+        });
+        quitOption.addEventListener('click', () => {
+            if(confirm('Are you sure you want to quit?')) window.location.reload();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if(e.key === ' ') {
+                if(activePowerUp === 'autoFire') {
+                    isSpaceHeld = true;
+                } else {
+                    shoot();
+                }
+            }
+            if(e.key === 'Escape') togglePause();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if(e.key === ' ' && activePowerUp === 'autoFire') {
+                isSpaceHeld = false;
+            }
+        });
+    </script>
+</body>
+</html>
